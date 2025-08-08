@@ -1,0 +1,98 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Productivity Tool: Excel → Results → Visuals</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; padding: 2rem; max-width: 900px; margin: 0 auto; }
+      .card { border: 1px solid #ddd; border-radius: 12px; padding: 1rem 1.2rem; margin-bottom: 1rem; }
+      h1 { font-size: 1.4rem; margin: 0 0 .8rem; }
+      button { padding: .6rem 1rem; border-radius: 10px; border: 1px solid #333; background: #fff; cursor: pointer; }
+      input[type="file"] { margin: .6rem 0; }
+      .row { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
+      small { color: #666; }
+      .hint { font-size: .9rem; color: #444; margin-top: .5rem; }
+      .ok { color: #0a0; }
+      .err { color: #c00; }
+      .footer { margin-top: 2rem; color: #777; font-size: .9rem; }
+    </style>
+  </head>
+  <body>
+    <h1>Excel → Calculations → Results → Visuals</h1>
+    <div class="card">
+      <h2>1) Upload & Process</h2>
+      <form id="process-form">
+        <div class="row">
+          <input type="file" id="process-file" accept=".xlsx,.xls" required />
+          <input type="text" id="sheet" placeholder="Sheet name (optional)" />
+          <button type="submit">Generate Results Excel</button>
+        </div>
+      </form>
+      <div id="process-status"></div>
+      <div class="hint">Applies your formulas server-side (see <code>processors/formulas.py</code>).</div>
+    </div>
+
+    <div class="card">
+      <h2>2) Ask ChatGPT for Visuals</h2>
+      <form id="visualize-form">
+        <div class="row">
+          <input type="file" id="visualize-file" accept=".xlsx,.xls" required />
+          <input type="text" id="sheet2" placeholder="Sheet name (optional)" />
+          <button type="submit">Get Charts (ZIP)</button>
+        </div>
+      </form>
+      <div id="visualize-status"></div>
+      <div class="hint">We send a minimal schema to the model to propose chart specs. The server renders charts with matplotlib (no model-generated code runs).</div>
+    </div>
+
+    <div class="footer">Backend must run on <code>http://localhost:8000</code>. Configure CORS in <code>.env</code> if needed.</div>
+
+    <script>
+      async function postFile(url, file, sheet){
+        const fd = new FormData();
+        fd.append("file", file);
+        if (sheet) fd.append("sheet", sheet);
+        const res = await fetch(url, { method: "POST", body: fd });
+        if (!res.ok) throw new Error(await res.text());
+        const blob = await res.blob();
+        const cd = res.headers.get("Content-Disposition") || "download.bin";
+        const match = /filename="([^"]+)"/.exec(cd);
+        const fname = match ? match[1] : "download.bin";
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = fname;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      }
+
+      document.getElementById("process-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const f = document.getElementById("process-file").files[0];
+        const sheet = document.getElementById("sheet").value;
+        const status = document.getElementById("process-status");
+        status.innerHTML = "Processing...";
+        try {
+          await postFile("/process", f, sheet);
+          status.innerHTML = "<span class='ok'>Done. Your results file has been downloaded.</span>";
+        } catch (err){
+          status.innerHTML = "<span class='err'>"+err.message+"</span>";
+        }
+      });
+
+      document.getElementById("visualize-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const f = document.getElementById("visualize-file").files[0];
+        const sheet = document.getElementById("sheet2").value;
+        const status = document.getElementById("visualize-status");
+        status.innerHTML = "Generating charts...";
+        try {
+          await postFile("/visualize", f, sheet);
+          status.innerHTML = "<span class='ok'>Charts ZIP downloaded.</span>";
+        } catch (err){
+          status.innerHTML = "<span class='err'>"+err.message+"</span>";
+        }
+      });
+    </script>
+  </body>
+</html>
