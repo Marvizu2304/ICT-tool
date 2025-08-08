@@ -75,7 +75,6 @@ if __name__ == "__main__":
         '/Users/maxarvizuv/Desktop/ICT - TESTING/testICT/Prueba completa.xlsx',
         'Resultados_MAIN_Completo.xlsx'
     )
-"""
 
 # If you paste a complete version of your script with the function `analizar_inventarios(...)`
 # it will be auto-detected by the /process route and used instead of the default pandas formulas.
